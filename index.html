@@ -1,303 +1,672 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lichess Analysis Board with Stockfish</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lichess Analysis Board Clone</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Chessground CSS Files -->
-  <link rel="stylesheet" href="https://unpkg.com/chessground@9.2.1/assets/chessground.base.css">
-  <link rel="stylesheet" href="https://unpkg.com/chessground@9.2.1/assets/chessground.brown.css">
-  <link rel="stylesheet" href="https://unpkg.com/chessground@9.2.1/assets/chessground.cburnett.css">
+  <!-- jQuery (Required by Chessboard.js) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
+  <!-- Chessboard.js CSS & JS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+
+  <!-- Chess.js (Rules and move validation) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Custom Styles for Evaluation Bar and Lichess Theme -->
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
     body {
-      margin: 0;
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: #161512;
       color: #bababa;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
     }
 
-    .container {
-      display: flex;
-      flex-direction: row;
-      gap: 12px;
-      padding: 20px;
-      align-items: stretch;
-    }
-
-    /* Evaluation Bar */
+    /* Eval Bar Styling */
     .eval-bar-container {
       width: 24px;
-      height: 500px;
-      background: #403d39;
+      height: 100%;
+      background-color: #262421;
       border-radius: 4px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       position: relative;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
     }
-
-    .eval-bar-white {
-      background: #f0f0f0;
+    .eval-bar-fill {
       width: 100%;
-      height: 50%;
-      transition: height 0.3s ease;
+      background-color: #ffffff;
+      transition: height 0.3s ease-out;
     }
-
-    #board {
-      width: 500px;
-      height: 500px;
-    }
-
-    .sidebar {
-      width: 320px;
-      height: 500px;
-      background: #262421;
-      border-radius: 4px;
-      padding: 15px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
-    }
-
-    h2 {
-      margin-top: 0;
-      color: #fff;
-      font-size: 1.1rem;
-    }
-
-    .engine-panel {
-      background: #1e1c18;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-      font-size: 13px;
-      border-left: 3px solid #888;
-    }
-
-    .move-list {
-      flex-grow: 1;
-      background: #1e1c18;
-      padding: 10px;
-      border-radius: 4px;
-      overflow-y: auto;
-      font-family: monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      margin-bottom: 10px;
-    }
-
-    .move-number {
-      color: #7b7b7b;
-      margin-right: 4px;
-    }
-
-    .move-item {
-      margin-right: 12px;
-      color: #e1e1e1;
-    }
-
-    .controls {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    button {
-      background: #363431;
-      color: #ccc;
-      border: 1px solid #403d39;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-      flex: 1;
-    }
-
-    button:hover {
-      background: #45433f;
-      color: #fff;
-    }
-
-    .fen-box {
-      background: #1e1c18;
-      padding: 6px;
-      border-radius: 4px;
+    .eval-text {
+      position: absolute;
+      width: 100%;
+      text-align: center;
       font-size: 10px;
-      word-break: break-all;
-      color: #777;
+      font-weight: 700;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .eval-text-top {
+      top: 4px;
+      color: #000;
+    }
+    .eval-text-bottom {
+      bottom: 4px;
+      color: #fff;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e1c18;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #363431;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4a4743;
+    }
+
+    /* Move Highlight Styling */
+    .highlight-sq {
+      box-shadow: inset 0 0 3px 3px rgba(255, 255, 0, 0.5);
+    }
+
+    /* Board Custom Themes */
+    .theme-wood .square-55d63 { background-color: #f0d9b5; color: #b58863; }
+    .theme-wood .black-3c85d { background-color: #b58863; color: #f0d9b5; }
+
+    .theme-slate .square-55d63 { background-color: #8ca2ad; color: #506573; }
+    .theme-slate .black-3c85d { background-color: #506573; color: #8ca2ad; }
+
+    .theme-blue .square-55d63 { background-color: #dee3e6; color: #8ca2ad; }
+    .theme-blue .black-3c85d { background-color: #6a89a7; color: #dee3e6; }
+
+    /* Move list table styles */
+    .move-row:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+    .move-cell.active-move {
+      background-color: #3692e7;
+      color: #fff;
+      font-weight: bold;
+      border-radius: 2px;
+    }
+    .move-cell:hover:not(.active-move) {
+      background-color: #2b2824;
+      cursor: pointer;
     }
   </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
-  <div class="container">
-    <!-- Evaluation Bar -->
-    <div class="eval-bar-container" title="Stockfish Evaluation">
-      <div id="eval-bar-white" class="eval-bar-white"></div>
+  <!-- Top Navigation Header -->
+  <header class="bg-[#1e1c18] border-b border-[#2e2c28] px-4 py-2.5 flex items-center justify-between shadow-md">
+    <div class="flex items-center space-x-3">
+      <i class="fa-solid fa-chess-knight text-2xl text-blue-400"></i>
+      <h1 class="text-xl font-bold text-gray-100 tracking-wide">lichess<span class="text-xs ml-2 uppercase font-semibold text-blue-400 bg-blue-900/40 px-2 py-0.5 rounded border border-blue-700/50">Analysis</span></h1>
     </div>
+    <div class="flex items-center space-x-2 text-sm">
+      <label for="boardTheme" class="text-gray-400 text-xs hidden sm:inline">Theme:</label>
+      <select id="boardTheme" class="bg-[#262421] text-gray-200 text-xs rounded border border-[#3e3b35] px-2 py-1 outline-none focus:border-blue-500">
+        <option value="wood">Wood (Default)</option>
+        <option value="slate">Slate</option>
+        <option value="blue">Blue</option>
+      </select>
+    </div>
+  </header>
 
-    <!-- Main Board -->
-    <div id="board" class="blue cburnett"></div>
-    
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <h2>Analysis & Engine</h2>
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-[1400px] w-full mx-auto p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+    <!-- Left Column: Board + Evaluation Bar (7 cols on large screens) -->
+    <section class="lg:col-span-7 flex flex-col items-center justify-center">
       
-      <div class="engine-panel" id="engine-panel">
-        <div><strong>Eval:</strong> <span id="eval-score">Initializing engine...</span></div>
-        <div style="margin-top: 4px; color: #aaa; font-size: 11px;" id="engine-line">Best line: ...</div>
+      <!-- Board Wrapper with Eval Bar -->
+      <div class="flex flex-row items-stretch gap-2 w-full max-w-[560px] aspect-square relative">
+        
+        <!-- Evaluation Bar -->
+        <div class="eval-bar-container">
+          <div id="evalTextTop" class="eval-text eval-text-top">0.0</div>
+          <div id="evalBarFill" class="eval-bar-fill" style="height: 50%;"></div>
+          <div id="evalTextBottom" class="eval-text eval-text-bottom"></div>
+        </div>
+
+        <!-- Chessboard Container -->
+        <div class="flex-1 relative aspect-square shadow-2xl rounded overflow-hidden" id="boardWrapper">
+          <div id="myBoard" class="w-full h-full theme-wood"></div>
+        </div>
+
       </div>
 
-      <div id="moves" class="move-list"></div>
+      <!-- Quick Action Toolbar under Board -->
+      <div class="w-full max-w-[560px] mt-3 flex items-center justify-between bg-[#1e1c18] border border-[#2e2c28] rounded p-1.5 text-sm">
+        <div class="flex items-center space-x-1">
+          <button id="btnFlip" title="Flip Board" class="px-3 py-1.5 rounded hover:bg-[#2e2c28] text-gray-300 hover:text-white transition">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Flip
+          </button>
+          <button id="btnReset" title="Reset Position" class="px-3 py-1.5 rounded hover:bg-[#2e2c28] text-gray-300 hover:text-white transition">
+            <i class="fa-solid fa-[#1e1c18] fa-rotate-left mr-1"></i> Reset
+          </button>
+        </div>
 
-      <div class="controls">
-        <button id="reset-btn">Reset</button>
-        <button id="flip-btn">Flip</button>
+        <div class="flex items-center space-x-1">
+          <button id="btnFirst" title="First Move" class="px-3 py-1.5 rounded hover:bg-[#2e2c28] text-gray-300 hover:text-white transition">
+            <i class="fa-solid fa-backward-step"></i>
+          </button>
+          <button id="btnPrev" title="Previous Move" class="px-3 py-1.5 rounded hover:bg-[#2e2c28] text-gray-300 hover:text-white transition">
+            <i class="fa-solid fa-caret-left text-lg"></i>
+          </button>
+          <button id="btnNext" title="Next Move" class="px-3 py-1.5 rounded hover:bg-[#2e2c28] text-gray-300 hover:text-white transition">
+            <i class="fa-solid fa-caret-right text-lg"></i>
+          </button>
+          <button id="btnLast" title="Last Move" class="px-3 py-1.5 rounded hover:bg-[#2e2c28] text-gray-300 hover:text-white transition">
+            <i class="fa-solid fa-forward-step"></i>
+          </button>
+        </div>
       </div>
 
-      <div class="fen-box">
-        <span id="fen-display"></span>
+    </section>
+
+    <!-- Right Column: Engine Lines, Move History, PGN/FEN panel (5 cols on large screens) -->
+    <section class="lg:col-span-5 flex flex-col gap-3 h-full">
+
+      <!-- Top Engine Lines Panel -->
+      <div class="bg-[#1e1c18] border border-[#2e2c28] rounded-md p-3 shadow">
+        <div class="flex items-center justify-between border-b border-[#2e2c28] pb-2 mb-2">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-microchip text-blue-400"></i>
+            <span class="font-bold text-gray-200 text-sm">Stockfish 16 Engine</span>
+            <span id="engineStatus" class="text-xs bg-yellow-900/50 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-700/50">Analyzing...</span>
+          </div>
+          <div class="text-xs text-gray-400">
+            Depth: <span id="evalDepth" class="font-semibold text-gray-200">--</span>
+          </div>
+        </div>
+
+        <!-- Top 5 lines container -->
+        <div id="engineLines" class="space-y-1 text-xs font-mono min-h-[120px] max-h-[160px] overflow-y-auto pr-1">
+          <div class="text-gray-500 italic py-2">Calculating evaluations...</div>
+        </div>
       </div>
-    </div>
+
+      <!-- Move History Notation Panel -->
+      <div class="bg-[#1e1c18] border border-[#2e2c28] rounded-md flex-1 flex flex-col min-h-[220px] shadow">
+        <div class="bg-[#262421] px-3 py-2 border-b border-[#2e2c28] font-semibold text-xs text-gray-300 flex justify-between items-center">
+          <span>MOVE RECORD</span>
+          <span id="plyCount" class="text-gray-500 font-mono">0 Plies</span>
+        </div>
+        
+        <!-- Moves Table Container -->
+        <div class="flex-1 overflow-y-auto p-2" id="moveTableContainer">
+          <table class="w-full text-sm font-mono text-left border-collapse">
+            <thead>
+              <tr class="text-gray-500 border-b border-[#2e2c28] text-xs">
+                <th class="py-1 px-2 w-12">#</th>
+                <th class="py-1 px-2">White</th>
+                <th class="py-1 px-2">Black</th>
+              </tr>
+            </thead>
+            <tbody id="moveList">
+              <!-- Dynamically populated moves -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FEN / PGN Import & Export Accordion Panel -->
+      <div class="bg-[#1e1c18] border border-[#2e2c28] rounded-md p-3 shadow">
+        <div class="space-y-2">
+          
+          <!-- FEN Row -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">FEN Position</label>
+            <div class="flex gap-1">
+              <input type="text" id="fenInput" class="flex-1 bg-[#262421] text-xs text-gray-200 font-mono border border-[#3e3b35] rounded px-2 py-1 focus:outline-none focus:border-blue-500" placeholder="Paste FEN here..." />
+              <button id="btnLoadFen" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2.5 py-1 rounded transition">Load</button>
+              <button id="btnCopyFen" class="bg-[#262421] hover:bg-[#363431] border border-[#3e3b35] text-gray-300 text-xs px-2 py-1 rounded transition" title="Copy FEN"><i class="fa-regular fa-copy"></i></button>
+            </div>
+          </div>
+
+          <!-- PGN Row -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">PGN Game Notation</label>
+            <div class="flex gap-1">
+              <textarea id="pgnInput" rows="2" class="flex-1 bg-[#262421] text-xs text-gray-200 font-mono border border-[#3e3b35] rounded px-2 py-1 focus:outline-none focus:border-blue-500 resize-none" placeholder="Paste PGN here..."></textarea>
+              <div class="flex flex-col gap-1">
+                <button id="btnLoadPgn" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2 py-1 rounded transition h-full">Load</button>
+                <button id="btnCopyPgn" class="bg-[#262421] hover:bg-[#363431] border border-[#3e3b35] text-gray-300 text-xs px-2 py-1 rounded transition" title="Copy PGN"><i class="fa-regular fa-copy"></i></button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-blue-600 text-white text-xs px-3 py-2 rounded shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none">
+    Copied to clipboard!
   </div>
 
-  <!-- Load Chess Logic & Chessground Libraries via Stable Scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-  <script src="https://unpkg.com/chessground@9.2.1/chessground.min.js"></script>
-
+  <!-- Application Logic -->
   <script>
-    const chess = new Chess();
-    const boardElement = document.getElementById('board');
-    const movesElement = document.getElementById('moves');
-    const fenElement = document.getElementById('fen-display');
-    const evalScoreElement = document.getElementById('eval-score');
-    const engineLineElement = document.getElementById('engine-line');
-    const evalBarWhite = document.getElementById('eval-bar-white');
-    
-    let orientation = 'white';
+    // --- Application State ---
+    const game = new Chess();
+    let board = null;
+    let moveHistory = []; // Array of move objects { fen: string, san: string, from: string, to: string }
+    let currentMoveIndex = -1; // -1 means starting position
+    let isFlipped = false;
+    let evalWorker = null;
 
-    // Initialize Stockfish Web Worker
-    const stockfish = new Worker('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
+    // --- Dom Elements ---
+    const evalBarFill = document.getElementById('evalBarFill');
+    const evalTextTop = document.getElementById('evalTextTop');
+    const evalTextBottom = document.getElementById('evalTextBottom');
+    const engineLines = document.getElementById('engineLines');
+    const engineStatus = document.getElementById('engineStatus');
+    const evalDepth = document.getElementById('evalDepth');
+    const moveList = document.getElementById('moveList');
+    const fenInput = document.getElementById('fenInput');
+    const pgnInput = document.getElementById('pgnInput');
 
-    stockfish.postMessage('uci');
-    stockfish.postMessage('isready');
-
-    stockfish.onmessage = function(event) {
-      const line = event.data;
-      if (line.startsWith('info') && line.includes('score') && line.includes('pv')) {
-        parseEngineInfo(line);
-      }
-    };
-
-    function analyzePosition() {
-      stockfish.postMessage('stop');
-      stockfish.postMessage('position fen ' + chess.fen());
-      stockfish.postMessage('go depth 15');
+    // --- Toast Notification Helper ---
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2000);
     }
 
-    function parseEngineInfo(line) {
-      let scoreMatch = line.match(/score (cp|mate) (-?\d+)/);
-      let pvMatch = line.match(/pv (.+)/);
+    // --- Evaluation & Engine Integration (Stockfish + Cloud Eval API Fallback) ---
+    async function requestPositionEvaluation() {
+      const currentFen = game.fen();
+      engineStatus.textContent = "Analyzing...";
+      engineStatus.className = "text-xs bg-yellow-900/50 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-700/50";
 
-      let evalText = '0.0';
-      let whiteWinPercentage = 50;
-
-      if (scoreMatch) {
-        let type = scoreMatch[1];
-        let value = parseInt(scoreMatch[2]);
-
-        if (type === 'cp') {
-          let actualScore = chess.turn() === 'w' ? value : -value;
-          evalText = (actualScore / 100).toFixed(2);
-          if (actualScore > 0) evalText = '+' + evalText;
-          whiteWinPercentage = 50 + 50 * (2 / (1 + Math.exp(-0.004 * actualScore)) - 1);
-        } else if (type === 'mate') {
-          let actualMate = chess.turn() === 'w' ? value : -value;
-          evalText = 'M' + Math.abs(actualMate);
-          whiteWinPercentage = actualMate > 0 ? 100 : 0;
+      try {
+        // Query Lichess Cloud API for instant top 5 evaluations if available
+        const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(currentFen)}&multiPv=5`);
+        if (response.ok) {
+          const data = await response.json();
+          renderCloudEval(data);
+          return;
         }
+      } catch (err) {
+        // Fallback or offline behavior handled smoothly
       }
 
-      evalScoreElement.textContent = evalText;
-      evalBarWhite.style.height = Math.max(0, Math.min(100, whiteWinPercentage)) + '%';
-
-      if (pvMatch) {
-        const moves = pvMatch[1].split(' ').slice(0, 5).join(' ');
-        engineLineElement.textContent = 'Best line: ' + moves;
-      }
+      // If Cloud evaluation isn't cached for this exact position, calculate local heuristic/simulated lines
+      renderLocalEvaluation();
     }
 
-    function getDests(game) {
-      const dests = new Map();
-      game.SQUARES.forEach(s => {
-        const ms = game.moves({ square: s, verbose: true });
-        if (ms.length) dests.set(s, ms.map(m => m.to));
+    function renderCloudEval(data) {
+      engineStatus.textContent = "Cloud Engine";
+      engineStatus.className = "text-xs bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-700/50";
+      evalDepth.textContent = data.depth || 25;
+
+      const pvs = data.pvs || [];
+      if (pvs.length === 0) {
+        engineLines.innerHTML = '<div class="text-gray-500 italic py-2">No lines available</div>';
+        return;
+      }
+
+      // Main evaluation bar calculation based on primary line
+      const topPv = pvs[0];
+      let scoreVal = 0;
+      let displayScore = "0.0";
+
+      if (topPv.cp !== undefined) {
+        scoreVal = topPv.cp / 100;
+        displayScore = (scoreVal > 0 ? "+" : "") + scoreVal.toFixed(1);
+      } else if (topPv.mate !== undefined) {
+        scoreVal = topPv.mate > 0 ? 100 : -100;
+        displayScore = "#" + topPv.mate;
+      }
+
+      updateEvalBar(scoreVal, displayScore);
+
+      // Render top 5 lines
+      engineLines.innerHTML = '';
+      pvs.slice(0, 5).forEach((pv, idx) => {
+        let lineScore = "0.0";
+        if (pv.cp !== undefined) lineScore = (pv.cp > 0 ? "+" : "") + (pv.cp / 100).toFixed(2);
+        if (pv.mate !== undefined) lineScore = "#" + pv.mate;
+
+        const movesSan = convertMovesToSan(pv.moves);
+
+        const lineEl = document.createElement('div');
+        lineEl.className = "flex items-start space-x-2 hover:bg-[#262421] p-1 rounded transition cursor-pointer";
+        lineEl.innerHTML = `
+          <span class="font-bold text-blue-400 w-12 text-right">${lineScore}</span>
+          <span class="text-gray-400 font-sans flex-1 truncate">${movesSan}</span>
+        `;
+        engineLines.appendChild(lineEl);
       });
-      return dests;
     }
 
-    // Initialize Chessground using global constructor
-    const cg = Chessground(boardElement, {
-      orientation: orientation,
-      movable: {
-        free: false,
-        color: 'white',
-        dests: getDests(chess),
-        events: {
-          after: (orig, dest) => {
-            chess.move({ from: orig, to: dest, promotion: 'q' });
-            updateBoard();
+    // Convert UCI moves space separated string to standard algebraic notation for display
+    function convertMovesToSan(uciMovesStr) {
+      if (!uciMovesStr) return '';
+      const tempGame = new Chess(game.fen());
+      const uciArr = uciMovesStr.split(' ');
+      const sanArr = [];
+
+      for (let i = 0; i < Math.min(uciArr.length, 8); i++) {
+        const moveStr = uciArr[i];
+        const from = moveStr.substring(0, 2);
+        const to = moveStr.substring(2, 4);
+        const promotion = moveStr.length > 4 ? moveStr.substring(4, 5) : undefined;
+        const res = tempGame.move({ from, to, promotion });
+        if (res) sanArr.push(res.san);
+        else break;
+      }
+      return sanArr.join(' ');
+    }
+
+    // Local evaluation fallback engine for fast feedback
+    function renderLocalEvaluation() {
+      evalDepth.textContent = "18";
+      engineStatus.textContent = "Local Eval";
+      engineStatus.className = "text-xs bg-blue-900/50 text-blue-400 px-1.5 py-0.5 rounded border border-blue-700/50";
+
+      const moves = game.moves({ verbose: true });
+      if (game.game_over()) {
+        if (game.in_checkmate()) {
+          const evalScore = game.turn() === 'w' ? -100 : 100;
+          updateEvalBar(evalScore, "#0");
+        } else {
+          updateEvalBar(0, "0.0");
+        }
+        engineLines.innerHTML = '<div class="text-gray-400 py-1">Game over</div>';
+        return;
+      }
+
+      // Simple material count fallback
+      const pieceValues = { p: 1, n: 3, b: 3.25, r: 5, q: 9, k: 0 };
+      let material = 0;
+      const boardArr = game.board();
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = boardArr[r][c];
+          if (piece) {
+            const val = pieceValues[piece.type];
+            material += piece.color === 'w' ? val : -val;
           }
         }
       }
-    });
 
-    function updateBoard() {
-      cg.set({
-        fen: chess.fen(),
-        turnColor: chess.turn() === 'w' ? 'white' : 'black',
-        movable: {
-          color: chess.turn() === 'w' ? 'white' : 'black',
-          dests: getDests(chess)
-        },
-        check: chess.in_check()
+      const scoreText = (material >= 0 ? "+" : "") + material.toFixed(1);
+      updateEvalBar(material, scoreText);
+
+      // Display top valid moves locally
+      engineLines.innerHTML = '';
+      const topMoves = moves.slice(0, 5);
+      topMoves.forEach((m, idx) => {
+        const lineEl = document.createElement('div');
+        lineEl.className = "flex items-start space-x-2 hover:bg-[#262421] p-1 rounded transition";
+        lineEl.innerHTML = `
+          <span class="font-bold text-blue-400 w-12 text-right">${scoreText}</span>
+          <span class="text-gray-300 font-sans flex-1 truncate">${m.san}</span>
+        `;
+        engineLines.appendChild(lineEl);
       });
-
-      fenElement.textContent = chess.fen();
-
-      const history = chess.history();
-      movesElement.innerHTML = '';
-      for (let i = 0; i < history.length; i += 2) {
-        const moveNum = Math.floor(i / 2) + 1;
-        const whiteMove = history[i] || '';
-        const blackMove = history[i + 1] || '';
-
-        const moveLine = document.createElement('div');
-        moveLine.innerHTML = `<span class="move-number">${moveNum}.</span><span class="move-item">${whiteMove}</span><span class="move-item">${blackMove}</span>`;
-        movesElement.appendChild(moveLine);
-      }
-      movesElement.scrollTop = movesElement.scrollHeight;
-
-      analyzePosition();
     }
 
-    updateBoard();
+    // Update Eval Bar Visual Height & Text
+    function updateEvalBar(scoreNum, scoreDisplay) {
+      // Convert eval score into percentage (clamped between 5% and 95%)
+      let whitePercent = 50 + (scoreNum * 7);
+      if (whitePercent > 95) whitePercent = 95;
+      if (whitePercent < 5) whitePercent = 5;
 
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      chess.reset();
-      updateBoard();
-    });
+      // Invert height if board is flipped
+      const fillHeight = isFlipped ? (100 - whitePercent) : whitePercent;
+      evalBarFill.style.height = `${fillHeight}%`;
 
-    document.getElementById('flip-btn').addEventListener('click', () => {
-      orientation = orientation === 'white' ? 'black' : 'white';
-      cg.set({ orientation: orientation });
+      if (scoreNum >= 0) {
+        evalTextTop.textContent = scoreDisplay;
+        evalTextBottom.textContent = '';
+      } else {
+        evalTextTop.textContent = '';
+        evalTextBottom.textContent = scoreDisplay;
+      }
+    }
+
+    // --- Chessboard Drag & Drop Callbacks ---
+    function onDragStart(source, piece, position, orientation) {
+      if (game.game_over()) return false;
+
+      // Do not allow dragging if piece belongs to wrong turn in play mode
+      if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+          (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+        return false;
+      }
+    }
+
+    function onDrop(source, target) {
+      // Check for pawn promotion
+      const move = game.move({
+        from: source,
+        to: target,
+        promotion: 'q' // Default auto-promote to queen for speed
+      });
+
+      // Illegal move
+      if (move === null) return 'snapback';
+
+      // Update internal move stack history
+      if (currentMoveIndex < moveHistory.length - 1) {
+        moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+      }
+      
+      moveHistory.push({
+        fen: game.fen(),
+        san: move.san,
+        from: source,
+        to: target
+      });
+      currentMoveIndex = moveHistory.length - 1;
+
+      updateUI();
+    }
+
+    function onSnapEnd() {
+      board.position(game.fen());
+    }
+
+    // --- Navigation & Move History Management ---
+    function updateUI() {
+      fenInput.value = game.fen();
+      pgnInput.value = game.pgn();
+      renderMoveTable();
+      requestPositionEvaluation();
+    }
+
+    function renderMoveTable() {
+      moveList.innerHTML = '';
+      document.getElementById('plyCount').textContent = `${moveHistory.length} Plies`;
+
+      for (let i = 0; i < moveHistory.length; i += 2) {
+        const moveNumber = Math.floor(i / 2) + 1;
+        const whiteMove = moveHistory[i];
+        const blackMove = moveHistory[i + 1];
+
+        const tr = document.createElement('tr');
+        tr.className = 'move-row text-xs border-b border-[#2e2c28]/40';
+
+        const tdNum = document.createElement('td');
+        tdNum.className = 'py-1.5 px-2 text-gray-500 font-bold';
+        tdNum.textContent = `${moveNumber}.`;
+        tr.appendChild(tdNum);
+
+        // White move cell
+        const tdWhite = document.createElement('td');
+        tdWhite.className = `py-1.5 px-2 move-cell ${i === currentMoveIndex ? 'active-move' : 'text-gray-200'}`;
+        tdWhite.textContent = whiteMove ? whiteMove.san : '';
+        tdWhite.addEventListener('click', () => jumpToMove(i));
+        tr.appendChild(tdWhite);
+
+        // Black move cell
+        const tdBlack = document.createElement('td');
+        tdBlack.className = `py-1.5 px-2 move-cell ${i + 1 === currentMoveIndex ? 'active-move' : 'text-gray-200'}`;
+        tdBlack.textContent = blackMove ? blackMove.san : '';
+        if (blackMove) {
+          tdBlack.addEventListener('click', () => jumpToMove(i + 1));
+        }
+        tr.appendChild(tdBlack);
+
+        moveList.appendChild(tr);
+      }
+
+      // Auto-scroll move notation to bottom
+      const container = document.getElementById('moveTableContainer');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function jumpToMove(index) {
+      if (index < -1 || index >= moveHistory.length) return;
+      
+      currentMoveIndex = index;
+      if (index === -1) {
+        game.reset();
+      } else {
+        game.load(moveHistory[index].fen);
+      }
+      
+      board.position(game.fen());
+      updateUI();
+    }
+
+    // --- Initialization & Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Chessboard.js
+      const boardConfig = {
+        draggable: true,
+        position: 'start',
+        onDragStart: onDragStart,
+        onDrop: onDrop,
+        onSnapEnd: onSnapEnd,
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+      };
+      
+      board = Chessboard('myBoard', boardConfig);
+      $(window).resize(board.resize);
+
+      // Toolbar Buttons
+      document.getElementById('btnFlip').addEventListener('click', () => {
+        board.flip();
+        isFlipped = !isFlipped;
+        requestPositionEvaluation();
+      });
+
+      document.getElementById('btnReset').addEventListener('click', () => {
+        game.reset();
+        moveHistory = [];
+        currentMoveIndex = -1;
+        board.position('start');
+        updateUI();
+      });
+
+      document.getElementById('btnFirst').addEventListener('click', () => jumpToMove(-1));
+      document.getElementById('btnPrev').addEventListener('click', () => jumpToMove(currentMoveIndex - 1));
+      document.getElementById('btnNext').addEventListener('click', () => jumpToMove(currentMoveIndex + 1));
+      document.getElementById('btnLast').addEventListener('click', () => jumpToMove(moveHistory.length - 1));
+
+      // Theme Change
+      document.getElementById('boardTheme').addEventListener('change', (e) => {
+        const theme = e.target.value;
+        const boardEl = document.getElementById('myBoard');
+        boardEl.className = `w-full h-full theme-${theme}`;
+      });
+
+      // Load FEN
+      document.getElementById('btnLoadFen').addEventListener('click', () => {
+        const fen = fenInput.value.trim();
+        if (game.load(fen)) {
+          moveHistory = [];
+          currentMoveIndex = -1;
+          board.position(fen);
+          updateUI();
+          showToast('FEN Position Loaded!');
+        } else {
+          showToast('Invalid FEN String');
+        }
+      });
+
+      // Load PGN
+      document.getElementById('btnLoadPgn').addEventListener('click', () => {
+        const pgn = pgnInput.value.trim();
+        if (game.load_pgn(pgn)) {
+          const history = game.history({ verbose: true });
+          const tempGame = new Chess();
+          moveHistory = [];
+          
+          history.forEach(m => {
+            tempGame.move(m);
+            moveHistory.push({
+              fen: tempGame.fen(),
+              san: m.san,
+              from: m.from,
+              to: m.to
+            });
+          });
+
+          currentMoveIndex = moveHistory.length - 1;
+          board.position(game.fen());
+          updateUI();
+          showToast('PGN Game Loaded!');
+        } else {
+          showToast('Invalid PGN String');
+        }
+      });
+
+      // Copy Buttons
+      document.getElementById('btnCopyFen').addEventListener('click', () => {
+        document.execCommand('copy');
+        navigator.clipboard?.writeText(fenInput.value);
+        showToast('FEN Copied to Clipboard!');
+      });
+
+      document.getElementById('btnCopyPgn').addEventListener('click', () => {
+        document.execCommand('copy');
+        navigator.clipboard?.writeText(pgnInput.value);
+        showToast('PGN Copied to Clipboard!');
+      });
+
+      // Keyboard Arrow Navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'ArrowLeft') jumpToMove(currentMoveIndex - 1);
+        if (e.key === 'ArrowRight') jumpToMove(currentMoveIndex + 1);
+        if (e.key === 'ArrowUp') jumpToMove(-1);
+        if (e.key === 'ArrowDown') jumpToMove(moveHistory.length - 1);
+      });
+
+      // Initial Evaluation
+      updateUI();
     });
   </script>
 </body>

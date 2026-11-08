@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lichess Analysis Board with Stockfish</title>
 
+  <!-- Import Map to safely resolve ES modules in the browser -->
+  <script type="importmap">
+    {
+      "imports": {
+        "chessground": "https://cdn.jsdelivr.net/npm/chessground@9.2.1/+esm"
+      }
+    }
+  </script>
+
   <!-- Chessground CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.brown.css">
@@ -169,10 +178,12 @@
     </div>
   </div>
 
-  <!-- Load Chess Logic & Lichess UI Libraries -->
+  <!-- Load Chess Logic Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  
+  <!-- Main Logic Script -->
   <script type="module">
-    import { Chessground } from 'https://cdn.jsdelivr.net/npm/chessground@9.2.1/+esm';
+    import { Chessground } from 'chessground';
 
     const chess = new Chess();
     const boardElement = document.getElementById('board');
@@ -184,7 +195,7 @@
     
     let orientation = 'white';
 
-    // Initialize Stockfish Web Worker via CDN (using older stable build for browser compatibility)
+    // Initialize Stockfish Web Worker via CDN
     const stockfish = new Worker('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
 
     stockfish.postMessage('uci');
@@ -192,17 +203,15 @@
 
     stockfish.onmessage = function(event) {
       const line = event.data;
-      
-      // Parse Stockfish evaluation output info lines (e.g., "info depth 12 score cp 35 ... pv e2e4 e7e5")
       if (line.startsWith('info') && line.includes('score') && line.includes('pv')) {
         parseEngineInfo(line);
       }
     };
 
     function analyzePosition() {
-      stockfish.postMessage('stop'); // Stop previous calculations
+      stockfish.postMessage('stop');
       stockfish.postMessage('position fen ' + chess.fen());
-      stockfish.postMessage('go depth 15'); // Calculate up to depth 15
+      stockfish.postMessage('go depth 15');
     }
 
     function parseEngineInfo(line) {
@@ -217,14 +226,9 @@
         let value = parseInt(scoreMatch[2]);
 
         if (type === 'cp') {
-          // Centipawn score (divide by 100 for pawns)
-          // Note: Stockfish reports score relative to side to move
           let actualScore = chess.turn() === 'w' ? value : -value;
           evalText = (actualScore / 100).toFixed(2);
           if (actualScore > 0) evalText = '+' + evalText;
-
-          // Calculate eval bar height percentages smoothly using a sigmoid/logistic scaling function
-          // 0 cp = 50%, +400 cp (~4 pawns ahead) ≈ 85% height
           whiteWinPercentage = 50 + 50 * (2 / (1 + Math.exp(-0.004 * actualScore)) - 1);
         } else if (type === 'mate') {
           let actualMate = chess.turn() === 'w' ? value : -value;
@@ -237,13 +241,11 @@
       evalBarWhite.style.height = Math.max(0, Math.min(100, whiteWinPercentage)) + '%';
 
       if (pvMatch) {
-        // Show top line moves abbreviated
         const moves = pvMatch[1].split(' ').slice(0, 5).join(' ');
         engineLineElement.textContent = 'Best line: ' + moves;
       }
     }
 
-    // Map legal moves from chess.js to Chessground destinations
     function getDests(game) {
       const dests = new Map();
       game.SQUARES.forEach(s => {
@@ -253,7 +255,6 @@
       return dests;
     }
 
-    // Initialize Lichess Chessground instance
     const cg = Chessground(boardElement, {
       orientation: orientation,
       movable: {
@@ -282,7 +283,6 @@
 
       fenElement.textContent = chess.fen();
 
-      // Render Move History List
       const history = chess.history();
       movesElement.innerHTML = '';
       for (let i = 0; i < history.length; i += 2) {
@@ -296,20 +296,16 @@
       }
       movesElement.scrollTop = movesElement.scrollHeight;
 
-      // Trigger Stockfish Engine Analysis on every new board state
       analyzePosition();
     }
 
-    // Initial load execution
     updateBoard();
 
-    // Reset Button
     document.getElementById('reset-btn').addEventListener('click', () => {
       chess.reset();
       updateBoard();
     });
 
-    // Flip Board Button
     document.getElementById('flip-btn').addEventListener('click', () => {
       orientation = orientation === 'white' ? 'black' : 'white';
       cg.set({ orientation: orientation });

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lichess Analysis Board Clone</title>
+
+  <!-- Chessground CSS (Lichess piece & board themes) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.brown.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.cburnett.css">
+
+  <style>
+    body {
+      margin: 0;
+      background-color: #161512;
+      color: #bababa;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    /* Chessground Board Dimensions */
+    #board {
+      width: 500px;
+      height: 500px;
+    }
+
+    .sidebar {
+      width: 320px;
+      height: 500px;
+      background: #262421;
+      border-radius: 4px;
+      padding: 15px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #fff;
+      font-size: 1.2rem;
+    }
+
+    .move-list {
+      flex-grow: 1;
+      background: #1e1c18;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .move-number {
+      color: #7b7b7b;
+      margin-right: 4px;
+    }
+
+    .move-item {
+      margin-right: 12px;
+      color: #e1e1e1;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      background: #363431;
+      color: #ccc;
+      border: 1px solid #403d39;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      flex: 1;
+    }
+
+    button:hover {
+      background: #45433f;
+      color: #fff;
+    }
+
+    .fen-box {
+      background: #1e1c18;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      word-break: break-all;
+      color: #888;
+    }
+
+    @media (max-width: 850px) {
+      .container {
+        flex-direction: column;
+        align-items: center;
+      }
+      #board {
+        width: 90vw;
+        height: 90vw;
+        max-width: 500px;
+        max-height: 500px;
+      }
+      .sidebar {
+        width: 90vw;
+        max-width: 500px;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div id="board" class="blue cburnett"></div>
+    
+    <div class="sidebar">
+      <h2>Analysis Board</h2>
+      
+      <div id="moves" class="move-list"></div>
+
+      <div class="controls">
+        <button id="reset-btn">Reset</button>
+        <button id="flip-btn">Flip Board</button>
+      </div>
+
+      <div class="fen-box">
+        <strong>FEN:</strong> <span id="fen-display"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Chess Logic & Lichess UI Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script type="module">
+    import { Chessground } from 'https://cdn.jsdelivr.net/npm/chessground@9.2.1/+esm';
+
+    const chess = new Chess();
+    const boardElement = document.getElementById('board');
+    const movesElement = document.getElementById('moves');
+    const fenElement = document.getElementById('fen-display');
+    let orientation = 'white';
+
+    // Helper: Map legal moves from chess.js to Chessground destinations
+    function getDests(game) {
+      const dests = new Map();
+      game.SQUARES.forEach(s => {
+        const ms = game.moves({ square: s, verbose: true });
+        if (ms.length) dests.set(s, ms.map(m => m.to));
+      });
+      return dests;
+    }
+
+    // Initialize Lichess Chessground instance
+    const cg = Chessground(boardElement, {
+      orientation: orientation,
+      movable: {
+        free: false,
+        color: 'white',
+        dests: getDests(chess),
+        events: {
+          after: (orig, dest) => {
+            // Register move in chess.js
+            chess.move({ from: orig, to: dest, promotion: 'q' });
+            updateBoard();
+          }
+        }
+      }
+    });
+
+    function updateBoard() {
+      // Refresh Chessground state
+      cg.set({
+        fen: chess.fen(),
+        turnColor: chess.turn() === 'w' ? 'white' : 'black',
+        movable: {
+          color: chess.turn() === 'w' ? 'white' : 'black',
+          dests: getDests(chess)
+        },
+        check: chess.in_check()
+      });
+
+      // Update FEN Display
+      fenElement.textContent = chess.fen();
+
+      // Render Move History List
+      const history = chess.history();
+      movesElement.innerHTML = '';
+      for (let i = 0; i < history.length; i += 2) {
+        const moveNum = Math.floor(i / 2) + 1;
+        const whiteMove = history[i] || '';
+        const blackMove = history[i + 1] || '';
+
+        const moveLine = document.createElement('div');
+        moveLine.innerHTML = `<span class="move-number">${moveNum}.</span><span class="move-item">${whiteMove}</span><span class="move-item">${blackMove}</span>`;
+        movesElement.appendChild(moveLine);
+      }
+      movesElement.scrollTop = movesElement.scrollHeight;
+    }
+
+    // Initial load call
+    updateBoard();
+
+    // Reset Button
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      chess.reset();
+      updateBoard();
+    });
+
+    // Flip Board Button
+    document.getElementById('flip-btn').addEventListener('click', () => {
+      orientation = orientation === 'white' ? 'black' : 'white';
+      cg.set({ orientation: orientation });
+    });
+  </script>
+</body>
+</html>

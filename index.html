@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lichess Analysis Board Clone</title>
+  <title>Lichess Analysis Board with Stockfish</title>
 
-  <!-- Chessground CSS (Lichess piece & board themes) -->
+  <!-- Chessground CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.brown.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.cburnett.css">
@@ -25,11 +25,30 @@
     .container {
       display: flex;
       flex-direction: row;
-      gap: 20px;
+      gap: 12px;
       padding: 20px;
+      align-items: stretch;
     }
 
-    /* Chessground Board Dimensions */
+    /* Evaluation Bar Layout */
+    .eval-bar-container {
+      width: 24px;
+      height: 500px;
+      background: #403d39;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .eval-bar-white {
+      background: #f0f0f0;
+      width: 100%;
+      height: 50%; /* Dynamic fill */
+      transition: height 0.3s ease;
+    }
+
     #board {
       width: 500px;
       height: 500px;
@@ -50,7 +69,16 @@
     h2 {
       margin-top: 0;
       color: #fff;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
+    }
+
+    .engine-panel {
+      background: #1e1c18;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      border-left: 3px solid #888;
     }
 
     .move-list {
@@ -62,7 +90,7 @@
       font-family: monospace;
       font-size: 14px;
       line-height: 1.6;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .move-number {
@@ -78,7 +106,7 @@
     .controls {
       display: flex;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     button {
@@ -99,49 +127,44 @@
 
     .fen-box {
       background: #1e1c18;
-      padding: 8px;
+      padding: 6px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10px;
       word-break: break-all;
-      color: #888;
-    }
-
-    @media (max-width: 850px) {
-      .container {
-        flex-direction: column;
-        align-items: center;
-      }
-      #board {
-        width: 90vw;
-        height: 90vw;
-        max-width: 500px;
-        max-height: 500px;
-      }
-      .sidebar {
-        width: 90vw;
-        max-width: 500px;
-        height: auto;
-      }
+      color: #777;
     }
   </style>
 </head>
 <body>
 
   <div class="container">
+    <!-- Evaluation Bar -->
+    <div class="eval-bar-container" title="Stockfish Evaluation">
+      <div id="eval-bar-white" class="eval-bar-white"></div>
+    </div>
+
+    <!-- Main Board -->
     <div id="board" class="blue cburnett"></div>
     
+    <!-- Sidebar -->
     <div class="sidebar">
-      <h2>Analysis Board</h2>
+      <h2>Analysis & Engine</h2>
       
+      <!-- Engine Evaluation Info Panel -->
+      <div class="engine-panel" id="engine-panel">
+        <div><strong>Eval:</strong> <span id="eval-score">Initializing engine...</span></div>
+        <div style="margin-top: 4px; color: #aaa; font-size: 11px;" id="engine-line">Best line: ...</div>
+      </div>
+
       <div id="moves" class="move-list"></div>
 
       <div class="controls">
         <button id="reset-btn">Reset</button>
-        <button id="flip-btn">Flip Board</button>
+        <button id="flip-btn">Flip</button>
       </div>
 
       <div class="fen-box">
-        <strong>FEN:</strong> <span id="fen-display"></span>
+        <span id="fen-display"></span>
       </div>
     </div>
   </div>
@@ -155,9 +178,72 @@
     const boardElement = document.getElementById('board');
     const movesElement = document.getElementById('moves');
     const fenElement = document.getElementById('fen-display');
+    const evalScoreElement = document.getElementById('eval-score');
+    const engineLineElement = document.getElementById('engine-line');
+    const evalBarWhite = document.getElementById('eval-bar-white');
+    
     let orientation = 'white';
 
-    // Helper: Map legal moves from chess.js to Chessground destinations
+    // Initialize Stockfish Web Worker via CDN (using older stable build for browser compatibility)
+    const stockfish = new Worker('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
+
+    stockfish.postMessage('uci');
+    stockfish.postMessage('isready');
+
+    stockfish.onmessage = function(event) {
+      const line = event.data;
+      
+      // Parse Stockfish evaluation output info lines (e.g., "info depth 12 score cp 35 ... pv e2e4 e7e5")
+      if (line.startsWith('info') && line.includes('score') && line.includes('pv')) {
+        parseEngineInfo(line);
+      }
+    };
+
+    function analyzePosition() {
+      stockfish.postMessage('stop'); // Stop previous calculations
+      stockfish.postMessage('position fen ' + chess.fen());
+      stockfish.postMessage('go depth 15'); // Calculate up to depth 15
+    }
+
+    function parseEngineInfo(line) {
+      let scoreMatch = line.match(/score (cp|mate) (-?\d+)/);
+      let pvMatch = line.match(/pv (.+)/);
+
+      let evalText = '0.0';
+      let whiteWinPercentage = 50;
+
+      if (scoreMatch) {
+        let type = scoreMatch[1];
+        let value = parseInt(scoreMatch[2]);
+
+        if (type === 'cp') {
+          // Centipawn score (divide by 100 for pawns)
+          // Note: Stockfish reports score relative to side to move
+          let actualScore = chess.turn() === 'w' ? value : -value;
+          evalText = (actualScore / 100).toFixed(2);
+          if (actualScore > 0) evalText = '+' + evalText;
+
+          // Calculate eval bar height percentages smoothly using a sigmoid/logistic scaling function
+          // 0 cp = 50%, +400 cp (~4 pawns ahead) ≈ 85% height
+          whiteWinPercentage = 50 + 50 * (2 / (1 + Math.exp(-0.004 * actualScore)) - 1);
+        } else if (type === 'mate') {
+          let actualMate = chess.turn() === 'w' ? value : -value;
+          evalText = 'M' + Math.abs(actualMate);
+          whiteWinPercentage = actualMate > 0 ? 100 : 0;
+        }
+      }
+
+      evalScoreElement.textContent = evalText;
+      evalBarWhite.style.height = Math.max(0, Math.min(100, whiteWinPercentage)) + '%';
+
+      if (pvMatch) {
+        // Show top line moves abbreviated
+        const moves = pvMatch[1].split(' ').slice(0, 5).join(' ');
+        engineLineElement.textContent = 'Best line: ' + moves;
+      }
+    }
+
+    // Map legal moves from chess.js to Chessground destinations
     function getDests(game) {
       const dests = new Map();
       game.SQUARES.forEach(s => {
@@ -176,7 +262,6 @@
         dests: getDests(chess),
         events: {
           after: (orig, dest) => {
-            // Register move in chess.js
             chess.move({ from: orig, to: dest, promotion: 'q' });
             updateBoard();
           }
@@ -185,7 +270,6 @@
     });
 
     function updateBoard() {
-      // Refresh Chessground state
       cg.set({
         fen: chess.fen(),
         turnColor: chess.turn() === 'w' ? 'white' : 'black',
@@ -196,7 +280,6 @@
         check: chess.in_check()
       });
 
-      // Update FEN Display
       fenElement.textContent = chess.fen();
 
       // Render Move History List
@@ -212,9 +295,12 @@
         movesElement.appendChild(moveLine);
       }
       movesElement.scrollTop = movesElement.scrollHeight;
+
+      // Trigger Stockfish Engine Analysis on every new board state
+      analyzePosition();
     }
 
-    // Initial load call
+    // Initial load execution
     updateBoard();
 
     // Reset Button

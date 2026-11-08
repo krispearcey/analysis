@@ -31,23 +31,29 @@
       color: #bababa;
     }
 
+    /* Fixed Wood Theme Colors */
+    .square-55d63 { background-color: #f0d9b5; color: #b58863; }
+    .black-3c85d { background-color: #b58863; color: #f0d9b5; }
+
     /* Eval Bar Styling */
     .eval-bar-container {
       width: 26px;
       height: 100%;
-      background-color: #262421;
+      background-color: #262421; /* Dark (Black advantage) color */
       border-radius: 4px;
       overflow: hidden;
       display: flex;
-      flex-direction: column;
+      flex-direction: column-reverse; /* Bottom-up fill */
       position: relative;
-      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.6);
     }
+    
     .eval-bar-fill {
       width: 100%;
-      background-color: #ffffff;
-      transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      background-color: #ffffff; /* Light (White advantage) color */
+      transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     .eval-text {
       position: absolute;
       width: 100%;
@@ -57,13 +63,13 @@
       z-index: 10;
       pointer-events: none;
     }
+    
     .eval-text-top {
       top: 4px;
-      color: #000;
     }
+    
     .eval-text-bottom {
       bottom: 4px;
-      color: #fff;
     }
 
     /* Custom Scrollbar */
@@ -82,16 +88,6 @@
       background: #4a4743;
     }
 
-    /* Board Custom Themes */
-    .theme-wood .square-55d63 { background-color: #f0d9b5; color: #b58863; }
-    .theme-wood .black-3c85d { background-color: #b58863; color: #f0d9b5; }
-
-    .theme-slate .square-55d63 { background-color: #8ca2ad; color: #506573; }
-    .theme-slate .black-3c85d { background-color: #506573; color: #8ca2ad; }
-
-    .theme-blue .square-55d63 { background-color: #dee3e6; color: #8ca2ad; }
-    .theme-blue .black-3c85d { background-color: #6a89a7; color: #dee3e6; }
-
     /* Move list table styles */
     .move-row:nth-child(even) {
       background-color: rgba(255, 255, 255, 0.02);
@@ -106,23 +102,28 @@
       background-color: #2b2824;
       cursor: pointer;
     }
+
+    /* Engine pulse loader */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.3; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .engine-thinking {
+      animation: pulse-ring 1.4s infinite ease-in-out;
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col select-none">
 
   <!-- Top Navigation Header -->
   <header class="bg-[#1e1c18] border-b border-[#2e2c28] px-4 py-2.5 flex items-center justify-between shadow-md">
     <div class="flex items-center space-x-3">
       <i class="fa-solid fa-chess-knight text-2xl text-blue-400"></i>
-      <h1 class="text-xl font-bold text-gray-100 tracking-wide">lichess<span class="text-xs ml-2 uppercase font-semibold text-blue-400 bg-blue-900/40 px-2 py-0.5 rounded border border-blue-700/50">Analysis Engine</span></h1>
+      <h1 class="text-xl font-bold text-gray-100 tracking-wide">lichess<span class="text-xs ml-2 uppercase font-semibold text-blue-400 bg-blue-900/40 px-2 py-0.5 rounded border border-blue-700/50">Analysis Tool</span></h1>
     </div>
-    <div class="flex items-center space-x-2 text-sm">
-      <label for="boardTheme" class="text-gray-400 text-xs hidden sm:inline">Theme:</label>
-      <select id="boardTheme" class="bg-[#262421] text-gray-200 text-xs rounded border border-[#3e3b35] px-2 py-1 outline-none focus:border-blue-500">
-        <option value="wood">Wood (Default)</option>
-        <option value="slate">Slate</option>
-        <option value="blue">Blue</option>
-      </select>
+    <div class="flex items-center space-x-3 text-xs text-gray-400">
+      <span class="hidden sm:inline"><i class="fa-solid fa-keyboard mr-1"></i> Use &larr; &rarr; arrows to step moves</span>
     </div>
   </header>
 
@@ -135,16 +136,16 @@
       <!-- Board Wrapper with Eval Bar -->
       <div class="flex flex-row items-stretch gap-2 w-full max-w-[560px] aspect-square relative">
         
-        <!-- Evaluation Bar -->
+        <!-- Dynamic Evaluation Bar -->
         <div class="eval-bar-container">
-          <div id="evalTextTop" class="eval-text eval-text-top">0.0</div>
+          <div id="evalTextTop" class="eval-text eval-text-top text-gray-400"></div>
           <div id="evalBarFill" class="eval-bar-fill" style="height: 50%;"></div>
-          <div id="evalTextBottom" class="eval-text eval-text-bottom"></div>
+          <div id="evalTextBottom" class="eval-text eval-text-bottom text-gray-900">0.0</div>
         </div>
 
         <!-- Chessboard Container -->
         <div class="flex-1 relative aspect-square shadow-2xl rounded overflow-hidden" id="boardWrapper">
-          <div id="myBoard" class="w-full h-full theme-wood"></div>
+          <div id="myBoard" class="w-full h-full"></div>
         </div>
 
       </div>
@@ -185,13 +186,19 @@
       <div class="bg-[#1e1c18] border border-[#2e2c28] rounded-md p-3 shadow">
         <div class="flex items-center justify-between border-b border-[#2e2c28] pb-2 mb-2">
           <div class="flex items-center space-x-2">
-            <i class="fa-solid fa-microchip text-blue-400"></i>
-            <span class="font-bold text-gray-200 text-sm">Stockfish 16 Engine</span>
+            <!-- Loader icon -->
+            <div id="engineSpinner" class="w-3 h-3 rounded-full bg-blue-500 engine-thinking"></div>
+            <span class="font-bold text-gray-200 text-sm">Stockfish 16</span>
             <span id="engineStatus" class="text-xs bg-yellow-900/50 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-700/50">Initializing...</span>
           </div>
           <div class="text-xs text-gray-400">
             Depth: <span id="evalDepth" class="font-semibold text-gray-200">0</span>
           </div>
+        </div>
+
+        <!-- Hint Banner -->
+        <div class="text-[11px] text-gray-400 mb-2 italic">
+          <i class="fa-solid fa-hand-pointer text-blue-400 mr-1"></i> Click any recommended line below to play its first move.
         </div>
 
         <!-- Top 5 lines container -->
@@ -224,7 +231,7 @@
         </div>
       </div>
 
-      <!-- FEN / PGN Import & Export Accordion Panel -->
+      <!-- FEN / PGN Import & Export Panel -->
       <div class="bg-[#1e1c18] border border-[#2e2c28] rounded-md p-3 shadow">
         <div class="space-y-2">
           
@@ -273,16 +280,17 @@
 
     // --- Stockfish Web Worker Engine State ---
     let stockfishWorker = null;
-    let currentPvLines = {}; // Store multiPV line data indexed by pv rank (1-5)
+    let currentPvLines = {}; // MultiPV line data indexed by pv rank (1-5)
     let maxDepthCalculated = 0;
     let isWorkerReady = false;
 
-    // --- Dom Elements ---
+    // --- DOM Elements ---
     const evalBarFill = document.getElementById('evalBarFill');
     const evalTextTop = document.getElementById('evalTextTop');
     const evalTextBottom = document.getElementById('evalTextBottom');
     const engineLines = document.getElementById('engineLines');
     const engineStatus = document.getElementById('engineStatus');
+    const engineSpinner = document.getElementById('engineSpinner');
     const evalDepth = document.getElementById('evalDepth');
     const moveList = document.getElementById('moveList');
     const fenInput = document.getElementById('fenInput');
@@ -299,10 +307,21 @@
       }, 2000);
     }
 
+    function setEngineThinkingState(isThinking, statusText = null) {
+      if (isThinking) {
+        engineSpinner.classList.add('engine-thinking', 'bg-blue-500');
+        engineSpinner.classList.remove('bg-gray-600');
+        if (statusText) engineStatus.textContent = statusText;
+      } else {
+        engineSpinner.classList.remove('engine-thinking');
+        engineSpinner.classList.add('bg-gray-600');
+        if (statusText) engineStatus.textContent = statusText;
+      }
+    }
+
     // --- Initialize Stockfish Web Worker ---
     function initStockfishWorker() {
       try {
-        // Stockfish worker inline wrapper script loaded via CDN Blob
         const workerScript = `
           importScripts('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
         `;
@@ -320,7 +339,7 @@
       } catch (err) {
         console.warn('Web Worker Stockfish initialization failed, falling back to Lichess Cloud API.', err);
         isWorkerReady = false;
-        engineStatus.textContent = 'Cloud Engine';
+        setEngineThinkingState(false, 'Cloud API');
         engineStatus.className = 'text-xs bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-700/50';
       }
     }
@@ -331,13 +350,13 @@
 
       if (line === 'readyok') {
         isWorkerReady = true;
-        engineStatus.textContent = 'Stockfish Live';
+        setEngineThinkingState(true, 'Stockfish Live');
         engineStatus.className = 'text-xs bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-700/50';
         requestPositionEvaluation();
         return;
       }
 
-      // Parse UCI info score and PV lines: info depth 12 multipv 1 score cp 34 pv e2e4 e7e5 ...
+      // Parse UCI info score and PV lines
       if (line.startsWith('info') && line.includes('multipv') && line.includes(' score ')) {
         parseUciInfoLine(line);
       }
@@ -356,14 +375,14 @@
       const pvIndex = parseInt(multipvMatch[1], 10);
       const rawMoves = pvMatch[1].trim();
 
-      // Adjust turn for score relative to white perspective
+      // Score is relative to the side to move in UCI protocol
       const isWhiteToMove = game.turn() === 'w';
       let scoreVal = 0;
       let scoreDisplay = "0.0";
 
       if (scoreCpMatch) {
         let cp = parseInt(scoreCpMatch[1], 10);
-        if (!isWhiteToMove) cp = -cp; // Always store score from White's perspective
+        if (!isWhiteToMove) cp = -cp; // Store always from White's absolute perspective
         scoreVal = cp / 100;
         scoreDisplay = (scoreVal > 0 ? '+' : '') + scoreVal.toFixed(1);
       } else if (scoreMateMatch) {
@@ -373,11 +392,14 @@
         scoreDisplay = '#' + mate;
       }
 
+      const { movesSan, firstMove } = convertMovesToSan(rawMoves);
+
       currentPvLines[pvIndex] = {
         depth: depth,
         scoreVal: scoreVal,
         scoreDisplay: scoreDisplay,
-        movesSan: convertMovesToSan(rawMoves)
+        movesSan: movesSan,
+        firstMove: firstMove
       };
 
       if (depth > maxDepthCalculated) {
@@ -398,30 +420,62 @@
       const keys = Object.keys(currentPvLines).sort((a, b) => parseInt(a) - parseInt(b));
 
       if (keys.length === 0) {
-        engineLines.innerHTML = '<div class="text-gray-500 italic py-2">Calculating lines...</div>';
+        engineLines.innerHTML = '<div class="text-gray-500 italic py-2">Calculating recommended moves...</div>';
         return;
       }
 
       keys.forEach((key) => {
         const lineData = currentPvLines[key];
         const lineEl = document.createElement('div');
-        lineEl.className = "flex items-start space-x-2 hover:bg-[#262421] p-1 rounded transition cursor-pointer";
+        lineEl.className = "flex items-start space-x-2 bg-[#22201c] hover:bg-[#2e2c28] p-1.5 rounded transition cursor-pointer border border-[#2e2c28] hover:border-blue-500/50 group";
+        
         lineEl.innerHTML = `
-          <span class="font-bold text-blue-400 w-12 text-right">${lineData.scoreDisplay}</span>
-          <span class="text-gray-300 font-sans flex-1 truncate">${lineData.movesSan}</span>
+          <span class="font-bold text-blue-400 w-12 text-right group-hover:text-blue-300">${lineData.scoreDisplay}</span>
+          <span class="text-gray-200 font-sans flex-1 truncate group-hover:text-white">${lineData.movesSan}</span>
+          <i class="fa-solid fa-play text-[10px] text-gray-600 group-hover:text-blue-400 self-center"></i>
         `;
+
+        // Click line to execute first recommended move
+        lineEl.addEventListener('click', () => {
+          if (lineData.firstMove) {
+            executeMove(lineData.firstMove);
+          }
+        });
+
         engineLines.appendChild(lineEl);
       });
     }
 
-    // Trigger Evaluation Calculation (Local Stockfish Worker or Cloud API fallback)
+    // Execute a move programmatically on the board
+    function executeMove(moveObj) {
+      const move = game.move(moveObj);
+      if (move === null) return;
+
+      if (currentMoveIndex < moveHistory.length - 1) {
+        moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+      }
+
+      moveHistory.push({
+        fen: game.fen(),
+        san: move.san,
+        from: move.from,
+        to: move.to
+      });
+
+      currentMoveIndex = moveHistory.length - 1;
+      board.position(game.fen());
+      updateUI();
+    }
+
+    // Trigger Evaluation Calculation
     async function requestPositionEvaluation() {
       currentPvLines = {};
       maxDepthCalculated = 0;
       evalDepth.textContent = "0";
+      setEngineThinkingState(true);
 
       if (game.game_over()) {
-        engineStatus.textContent = "Game Over";
+        setEngineThinkingState(false, 'Game Over');
         engineStatus.className = "text-xs bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded border border-red-700/50";
         if (game.in_checkmate()) {
           const evalScore = game.turn() === 'w' ? -1000 : 1000;
@@ -439,13 +493,13 @@
         stockfishWorker.postMessage('stop');
         stockfishWorker.postMessage('position fen ' + currentFen);
         stockfishWorker.postMessage('go depth 20');
-        engineStatus.textContent = "Stockfish Live";
+        setEngineThinkingState(true, 'Stockfish Live');
         engineStatus.className = "text-xs bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-700/50";
         return;
       }
 
       // Fallback: Query Lichess Cloud API
-      engineStatus.textContent = "Cloud API";
+      setEngineThinkingState(true, 'Cloud API');
       engineStatus.className = "text-xs bg-blue-900/50 text-blue-400 px-1.5 py-0.5 rounded border border-blue-700/50";
       
       try {
@@ -453,12 +507,14 @@
         if (response.ok) {
           const data = await response.json();
           renderCloudEval(data);
+          setEngineThinkingState(false);
           return;
         }
       } catch (err) {
         console.error('Cloud eval request error', err);
       }
 
+      setEngineThinkingState(false);
       engineLines.innerHTML = '<div class="text-gray-500 italic py-2">Analyzing position...</div>';
     }
 
@@ -487,27 +543,34 @@
       engineLines.innerHTML = '';
       pvs.slice(0, 5).forEach((pv) => {
         let lineScore = "0.0";
-        if (pv.cp !== undefined) lineScore = (pv.cp > 0 ? "+" : "") + (pv.cp / 100).toFixed(2);
+        if (pv.cp !== undefined) lineScore = (pv.cp > 0 ? "+" : "") + (pv.cp / 100).toFixed(1);
         if (pv.mate !== undefined) lineScore = "#" + pv.mate;
 
-        const movesSan = convertMovesToSan(pv.moves);
+        const { movesSan, firstMove } = convertMovesToSan(pv.moves);
 
         const lineEl = document.createElement('div');
-        lineEl.className = "flex items-start space-x-2 hover:bg-[#262421] p-1 rounded transition cursor-pointer";
+        lineEl.className = "flex items-start space-x-2 bg-[#22201c] hover:bg-[#2e2c28] p-1.5 rounded transition cursor-pointer border border-[#2e2c28] hover:border-blue-500/50 group";
         lineEl.innerHTML = `
-          <span class="font-bold text-blue-400 w-12 text-right">${lineScore}</span>
-          <span class="text-gray-300 font-sans flex-1 truncate">${movesSan}</span>
+          <span class="font-bold text-blue-400 w-12 text-right group-hover:text-blue-300">${lineScore}</span>
+          <span class="text-gray-200 font-sans flex-1 truncate group-hover:text-white">${movesSan}</span>
+          <i class="fa-solid fa-play text-[10px] text-gray-600 group-hover:text-blue-400 self-center"></i>
         `;
+
+        lineEl.addEventListener('click', () => {
+          if (firstMove) executeMove(firstMove);
+        });
+
         engineLines.appendChild(lineEl);
       });
     }
 
-    // Convert UCI move strings (e.g., "e2e4 e7e5 g1f3") into readable SAN ("e4 e5 Nf3")
+    // Convert UCI move strings into readable SAN
     function convertMovesToSan(uciMovesStr) {
-      if (!uciMovesStr) return '';
+      if (!uciMovesStr) return { movesSan: '', firstMove: null };
       const tempGame = new Chess(game.fen());
       const uciArr = uciMovesStr.split(' ');
       const sanArr = [];
+      let firstMove = null;
 
       for (let i = 0; i < Math.min(uciArr.length, 7); i++) {
         const moveStr = uciArr[i];
@@ -515,30 +578,58 @@
         const from = moveStr.substring(0, 2);
         const to = moveStr.substring(2, 4);
         const promotion = moveStr.length > 4 ? moveStr.substring(4, 5) : undefined;
+        
         const res = tempGame.move({ from, to, promotion });
-        if (res) sanArr.push(res.san);
-        else break;
+        if (res) {
+          if (i === 0) {
+            firstMove = { from, to, promotion };
+          }
+          sanArr.push(res.san);
+        } else {
+          break;
+        }
       }
-      return sanArr.join(' ');
+      return { movesSan: sanArr.join(' '), firstMove: firstMove };
     }
 
-    // Dynamic Eval Bar updating logic
+    // Dynamic Eval Bar updating logic - Properly oriented for White/Black & Flipped perspectives
     function updateEvalBar(scoreNum, scoreDisplay) {
+      // White evaluation percentage (50% = equal position, +5 = ~85%, -5 = ~15%)
       let whitePercent = 50 + (scoreNum * 7);
       if (scoreNum > 10) whitePercent = 95;
       if (scoreNum < -10) whitePercent = 5;
       if (whitePercent > 95) whitePercent = 95;
       if (whitePercent < 5) whitePercent = 5;
 
+      // Adjust height fill based on whether board is flipped or normal
+      // Normal orientation: White is on bottom. White advantage = bottom white fill grows up.
+      // Flipped orientation: Black is on bottom. Black advantage = bottom dark grows up (white fill shrinks).
       const fillHeight = isFlipped ? (100 - whitePercent) : whitePercent;
       evalBarFill.style.height = `${fillHeight}%`;
 
-      if (scoreNum >= 0) {
-        evalTextTop.textContent = scoreDisplay;
-        evalTextBottom.textContent = '';
+      // Update evaluation text orientation
+      if (!isFlipped) {
+        // Standard perspective: Top is Black, Bottom is White
+        if (scoreNum >= 0) {
+          evalTextBottom.textContent = scoreDisplay;
+          evalTextTop.textContent = '';
+          evalTextBottom.className = 'eval-text eval-text-bottom text-gray-900 font-bold';
+        } else {
+          evalTextTop.textContent = scoreDisplay;
+          evalTextBottom.textContent = '';
+          evalTextTop.className = 'eval-text eval-text-top text-gray-200 font-bold';
+        }
       } else {
-        evalTextTop.textContent = '';
-        evalTextBottom.textContent = scoreDisplay;
+        // Flipped perspective: Top is White, Bottom is Black
+        if (scoreNum >= 0) {
+          evalTextTop.textContent = scoreDisplay;
+          evalTextBottom.textContent = '';
+          evalTextTop.className = 'eval-text eval-text-top text-gray-900 font-bold';
+        } else {
+          evalTextBottom.textContent = scoreDisplay;
+          evalTextTop.textContent = '';
+          evalTextBottom.className = 'eval-text eval-text-bottom text-gray-200 font-bold';
+        }
       }
     }
 
@@ -674,12 +765,6 @@
       document.getElementById('btnPrev').addEventListener('click', () => jumpToMove(currentMoveIndex - 1));
       document.getElementById('btnNext').addEventListener('click', () => jumpToMove(currentMoveIndex + 1));
       document.getElementById('btnLast').addEventListener('click', () => jumpToMove(moveHistory.length - 1));
-
-      document.getElementById('boardTheme').addEventListener('change', (e) => {
-        const theme = e.target.value;
-        const boardEl = document.getElementById('myBoard');
-        boardEl.className = `w-full h-full theme-${theme}`;
-      });
 
       document.getElementById('btnLoadFen').addEventListener('click', () => {
         const fen = fenInput.value.trim();

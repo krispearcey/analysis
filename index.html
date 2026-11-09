@@ -475,55 +475,12 @@
 
       const currentFen = game.fen();
 
-      // Fast-path: Instant evaluation from Lichess Cloud API
-      fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(currentFen)}&multiPv=5`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data && isEngineEnabled && Object.keys(currentPvLines).length === 0) {
-            renderCloudEval(data);
-          }
-        })
-        .catch(() => {});
-
       // Concurrent local Stockfish worker evaluation
       if (isWorkerReady && stockfishWorker) {
         stockfishWorker.postMessage('stop');
         stockfishWorker.postMessage('position fen ' + currentFen);
         stockfishWorker.postMessage(`go depth ${TARGET_DEPTH}`);
       }
-    }
-
-    function renderCloudEval(data) {
-      if (!data.pvs || data.pvs.length === 0) return;
-      data.pvs.forEach((pv, idx) => {
-        const pvIndex = idx + 1;
-        const movesSanArr = pv.moves ? pv.moves.split(' ') : [];
-        const { movesSan, firstMove } = convertMovesToSan(movesSanArr.join(' '));
-        
-        let scoreVal = 0;
-        let scoreDisplay = "0.0";
-        if (pv.cp !== undefined) {
-          scoreVal = pv.cp / 100;
-          scoreDisplay = (scoreVal > 0 ? '+' : '') + scoreVal.toFixed(1);
-        } else if (pv.mate !== undefined) {
-          scoreVal = pv.mate > 0 ? 1000 : -1000;
-          scoreDisplay = '#' + pv.mate;
-        }
-
-        if (!currentPvLines[pvIndex]) {
-          currentPvLines[pvIndex] = {
-            depth: data.depth || 18,
-            scoreVal: scoreVal,
-            scoreDisplay: scoreDisplay,
-            movesSan: movesSan,
-            firstMove: firstMove
-          };
-        }
-      });
-      if (currentPvLines[1]) {
-        updateEvalBar(currentPvLines[1].scoreVal, currentPvLines[1].scoreDisplay);
-      }
-      renderEngineLinesPanel();
     }
 
     function convertMovesToSan(uciMovesStr) {

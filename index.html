@@ -74,7 +74,7 @@
     }
     
     .progress-active {
-      background-image: linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #3b82f6 100%);
+      background-image: linear-gradient(90deg, #d97706 0%, #fbbf24 50%, #d97706 100%);
       background-size: 200px 100%;
       animation: engine-progress-shimmer 1.5s infinite linear;
     }
@@ -88,7 +88,7 @@
     /* Move list notation table styles */
     .move-row:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
     .move-cell.active-move {
-      background-color: #3692e7;
+      background-color: #d97706;
       color: #fff;
       font-weight: bold;
       border-radius: 2px;
@@ -162,17 +162,17 @@
         <!-- Engine Header Info -->
         <div class="flex items-center justify-between border-b border-[#2e2c28] pb-2 mb-2">
           <div class="flex items-center space-x-2">
-            <i class="fa-solid fa-microchip text-blue-400 text-sm"></i>
+            <i class="fa-solid fa-microchip text-amber-500 text-sm"></i>
             <span class="font-bold text-gray-200 text-xs tracking-wider uppercase">Stockfish 16+</span>
-            <span id="engineStatus" class="text-[10px] bg-blue-900/40 text-blue-400 px-1.5 py-0.5 rounded border border-blue-700/40">Initializing</span>
+            <span id="engineStatus" class="text-[10px] bg-amber-950/60 text-amber-400 px-1.5 py-0.5 rounded border border-amber-700/40">Initializing</span>
           </div>
           <div class="flex items-center space-x-3">
             <div class="text-xs text-gray-400 font-mono">
-              depth <span id="evalDepth" class="font-bold text-blue-400">0</span>/20
+              depth <span id="evalDepth" class="font-bold text-amber-400">0</span>/20
             </div>
 
             <!-- Engine Toggle Switch (Play / Pause Icon Only) -->
-            <button id="btnToggleEngine" title="Toggle Engine Analysis" class="w-7 h-6 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/40 flex items-center justify-center transition cursor-pointer">
+            <button id="btnToggleEngine" title="Toggle Engine Analysis" class="w-7 h-6 rounded bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/40 flex items-center justify-center transition cursor-pointer">
               <svg id="engineToggleSvg" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
               </svg>
@@ -182,7 +182,7 @@
 
         <!-- Lichess Thinking Progress Bar -->
         <div class="w-full bg-[#262421] h-1 rounded-full mb-3 overflow-hidden relative">
-          <div id="engineProgressBar" class="h-full bg-blue-500 w-0 transition-all duration-200 progress-active"></div>
+          <div id="engineProgressBar" class="h-full bg-amber-500 w-0 transition-all duration-200 progress-active"></div>
         </div>
 
         <!-- Top 5 Engine Lines Container -->
@@ -222,8 +222,8 @@
           <div>
             <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">FEN Position</label>
             <div class="flex gap-1">
-              <input type="text" id="fenInput" class="flex-1 bg-[#262421] text-xs text-gray-200 font-mono border border-[#3e3b35] rounded px-2 py-1 focus:outline-none focus:border-blue-500" placeholder="Paste FEN position..." />
-              <button id="btnLoadFen" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2.5 py-1 rounded transition">Load</button>
+              <input type="text" id="fenInput" class="flex-1 bg-[#262421] text-xs text-gray-200 font-mono border border-[#3e3b35] rounded px-2 py-1 focus:outline-none focus:border-amber-500" placeholder="Paste FEN position..." />
+              <button id="btnLoadFen" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-2.5 py-1 rounded transition">Load</button>
               <button id="btnCopyFen" class="bg-[#262421] hover:bg-[#363431] border border-[#3e3b35] text-gray-300 text-xs px-2 py-1 rounded transition" title="Copy FEN"><i class="fa-regular fa-copy"></i></button>
             </div>
           </div>
@@ -232,9 +232,9 @@
           <div>
             <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">PGN Game Notation</label>
             <div class="flex gap-1">
-              <textarea id="pgnInput" rows="2" class="flex-1 bg-[#262421] text-xs text-gray-200 font-mono border border-[#3e3b35] rounded px-2 py-1 focus:outline-none focus:border-blue-500 resize-none" placeholder="Paste PGN notation..."></textarea>
+              <textarea id="pgnInput" rows="2" class="flex-1 bg-[#262421] text-xs text-gray-200 font-mono border border-[#3e3b35] rounded px-2 py-1 focus:outline-none focus:border-amber-500 resize-none" placeholder="Paste PGN notation..."></textarea>
               <div class="flex flex-col gap-1">
-                <button id="btnLoadPgn" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2 py-1 rounded transition h-full">Load</button>
+                <button id="btnLoadPgn" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-2 py-1 rounded transition h-full">Load</button>
                 <button id="btnCopyPgn" class="bg-[#262421] hover:bg-[#363431] border border-[#3e3b35] text-gray-300 text-xs px-2 py-1 rounded transition" title="Copy PGN"><i class="fa-regular fa-copy"></i></button>
               </div>
             </div>
@@ -248,7 +248,7 @@
   </main>
 
   <!-- Notification Toast Container -->
-  <div id="toast" class="fixed bottom-4 right-4 bg-blue-600 text-white text-xs px-3 py-2 rounded shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50">
+  <div id="toast" class="fixed bottom-4 right-4 bg-amber-600 text-white text-xs px-3 py-2 rounded shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50">
     Copied to clipboard!
   </div>
 
@@ -338,7 +338,7 @@
       if (line === 'readyok') {
         isWorkerReady = true;
         engineStatus.textContent = 'Analyzing';
-        engineStatus.className = 'text-[10px] bg-blue-900/40 text-blue-400 px-1.5 py-0.5 rounded border border-blue-700/40';
+        engineStatus.className = 'text-[10px] bg-amber-950/60 text-amber-400 px-1.5 py-0.5 rounded border border-amber-700/40';
         requestPositionEvaluation();
         return;
       }
@@ -408,12 +408,12 @@
       keys.forEach((key) => {
         const lineData = currentPvLines[key];
         const lineEl = document.createElement('div');
-        lineEl.className = "flex items-start space-x-2 bg-[#22201c] hover:bg-[#2e2c28] p-1.5 rounded transition cursor-pointer border border-[#2e2c28] hover:border-blue-500/50 group";
+        lineEl.className = "flex items-start space-x-2 bg-[#22201c] hover:bg-[#2e2c28] p-1.5 rounded transition cursor-pointer border border-[#2e2c28] hover:border-amber-500/50 group";
         
         lineEl.innerHTML = `
-          <span class="font-bold text-blue-400 w-12 text-right group-hover:text-blue-300">${lineData.scoreDisplay}</span>
+          <span class="font-bold text-amber-400 w-12 text-right group-hover:text-amber-300">${lineData.scoreDisplay}</span>
           <span class="text-gray-200 font-sans flex-1 truncate group-hover:text-white">${lineData.movesSan}</span>
-          <i class="fa-solid fa-play text-[10px] text-gray-600 group-hover:text-blue-400 self-center"></i>
+          <i class="fa-solid fa-play text-[10px] text-gray-600 group-hover:text-amber-400 self-center"></i>
         `;
 
         lineEl.addEventListener('click', () => {
@@ -457,7 +457,7 @@
       currentPvLines = {};
       updateProgress(0);
       engineStatus.textContent = 'Searching';
-      engineStatus.className = 'text-[10px] bg-blue-900/40 text-blue-400 px-1.5 py-0.5 rounded border border-blue-700/40';
+      engineStatus.className = 'text-[10px] bg-amber-950/60 text-amber-400 px-1.5 py-0.5 rounded border border-amber-700/40';
 
       if (game.game_over()) {
         engineStatus.textContent = 'Game Over';
@@ -702,7 +702,7 @@
         
         if (isEngineEnabled) {
           svg.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
-          btnToggleEngine.className = 'w-7 h-6 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/40 flex items-center justify-center transition cursor-pointer';
+          btnToggleEngine.className = 'w-7 h-6 rounded bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/40 flex items-center justify-center transition cursor-pointer';
           requestPositionEvaluation();
         } else {
           svg.innerHTML = '<path d="M8 5v14l11-7z"/>';
